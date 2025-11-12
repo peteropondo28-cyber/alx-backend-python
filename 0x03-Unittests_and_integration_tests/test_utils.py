@@ -11,6 +11,7 @@ class TestAccessNestedMap(unittest.TestCase):
         ({"a": 1}, ("a",), 1),
         ({"a": {"b": 2}}, ("a",), {"b": 2}),
         ({"a": {"b": 2}}, ("a", "b"), 2),
+        ({"a": {"b": 0}}, ("a", "b"), 0),  # New test case: Expected 0
     ])
     def test_access_nested_map(self, nested_map, path, expected):
         """
