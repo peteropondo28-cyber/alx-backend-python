@@ -66,3 +66,38 @@ class TestGetJson(unittest.TestCase):
 
         mock_get.assert_called_once_with(test_url)
         self.assertEqual(result, test_payload)
+#!/usr/bin/env python3
+"""Unit tests for the memoize decorator."""
+import unittest
+from unittest.mock import patch, Mock
+from your_module import memoize  # Replace your_module with the actual module name
+
+class TestMemoize(unittest.TestCase):
+    """Unit tests for the memoize decorator."""
+
+    def test_memoize(self):
+        """Tests that the memoize decorator works as expected."""
+        
+        class TestClass:
+            def a_method(self):
+                return 42
+
+            @memoize
+            def a_property(self):
+                return self.a_method()
+
+        # Create an instance of TestClass
+        test_instance = TestClass()
+
+        # Patch the a_method to mock its behavior
+        with patch.object(test_instance, 'a_method', return_value=42) as mock_method:
+            # Call a_property twice
+            result1 = test_instance.a_property()
+            result2 = test_instance.a_property()
+
+            # Assert that the results are correct
+            self.assertEqual(result1, 42)
+            self.assertEqual(result2, 42)
+
+            # Assert that a_method was called only once
+            mock_method.assert_called_once()
