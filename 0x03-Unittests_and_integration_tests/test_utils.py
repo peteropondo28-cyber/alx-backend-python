@@ -1,51 +1,35 @@
 #!/usr/bin/env python3
-"""
-Unit tests for the access_nested_map function.
-"""
-import unittest
-from parameterized import parameterized
-from typing import (
-    Mapping,
-    Sequence,
-    Any,
+import pytest
+from utils import add_one_and_two
+
+@pytest.mark.parametrize(
+    "input_a, input_b, expected_result",
+    [
+        (1, 2, 4),
+        (0, 0, 1),
+        (-1, 1, 1),
+        (10, 20, 31),
+        (1.5, 2.5, 5.0),
+    ]
 )
-from your_module import access_nested_map  # Replace your_module
-
-class TestAccessNestedMap(unittest.TestCase):
+def test_add_one_and_two(input_a, input_b, expected_result):
     """
-    Unit tests for the access_nested_map function.
+    Tests the add_one_and_two function with various valid inputs.
     """
-    @parameterized.expand([
-        ({"a": 1}, ("a",), 1),
-        ({"a": {"b": 2}}, ("a",), {"b": 2}),
-        ({"a": {"b": 2}}, ("a", "b"), 2),
-        ({"a": {"b": 0}}, ("a", "b"), 0),
-    ])
-    def test_access_nested_map(
-        self,
-        nested_map: Mapping,
-        path: Sequence,
-        expected: Any,
-    ) -> None:
-        """
-        Tests the access_nested_map function with various inputs.
-        """
-        self.assertEqual(access_nested_map(nested_map, path), expected)
+    assert add_one_and_two(input_a, input_b) == expected_result
 
-    @parameterized.expand([
-        ({}, ("a",), "KeyError: 'a'"),
-        ({"a": 1}, ("a", "b"), "KeyError: 'b'"),
-    ])
-    def test_access_nested_map_exception(
-        self,
-        nested_map: Mapping,
-        path: Sequence,
-        expected_message: str,
-    ) -> None:
-        """
-        Tests that access_nested_map raises a KeyError with the correct message.
-        """
-        with self.assertRaises(KeyError) as context:
-            access_nested_map(nested_map, path)
-        self.assertEqual(str(context.exception), expected_message)
-
+@pytest.mark.parametrize(
+    "input_a, input_b, expected_error_message",
+    [
+        ("a", 2, "Inputs must be numbers"),
+        (1, "b", "Inputs must be numbers"),
+        (None, 5, "Inputs must be numbers"),
+    ]
+)
+def test_add_one_and_two_exceptions(input_a, input_b, expected_error_message):
+    """
+    Tests the add_one_and_two function for expected exceptions.
+    """
+    with pytest.raises(TypeError) as excinfo:
+        add_one_and_two(input_a, input_b)
+    assert str(excinfo.value) == expected_error_message
