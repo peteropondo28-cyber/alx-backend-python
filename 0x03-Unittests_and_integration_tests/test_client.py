@@ -28,7 +28,6 @@ class TestGithubOrgClient(unittest.TestCase):
         """
         expected_payload = {"login": org_name}
 
-        # Patch get_json inside client module
         with patch("client.get_json") as mock_get_json:
             mock_get_json.return_value = expected_payload
             client = GithubOrgClient(org_name)
@@ -47,7 +46,6 @@ class TestGithubOrgClient(unittest.TestCase):
         expected_url = "https://api.github.com/orgs/google/repos"
         mock_payload = {"repos_url": expected_url}
 
-        # Patch GithubOrgClient.org as a property (memoize turned it into one)
         with patch(
             "client.GithubOrgClient.org",
             new_callable=PropertyMock
@@ -64,7 +62,6 @@ class TestGithubOrgClient(unittest.TestCase):
         based on the mocked payload. Also test that _public_repos_url
         property and get_json function are called exactly once.
         """
-        # Mocked list of repos returned by get_json
         mock_payload = [
             {"name": "repo1"},
             {"name": "repo2"},
@@ -72,7 +69,6 @@ class TestGithubOrgClient(unittest.TestCase):
         ]
         mock_get_json.return_value = mock_payload
 
-        # Mock the _public_repos_url property
         with patch(
             "client.GithubOrgClient._public_repos_url",
             new_callable=PropertyMock
@@ -83,19 +79,16 @@ class TestGithubOrgClient(unittest.TestCase):
             client = GithubOrgClient("google")
             result = client.public_repos()
 
-            # Expected list of repository names
             expected = ["repo1", "repo2", "repo3"]
             self.assertEqual(result, expected)
 
-            # Ensure the property was accessed exactly once
             mock_url.assert_called_once()
-
-            # Ensure get_json was called once with the mocked URL
             mock_get_json.assert_called_once_with(fake_url)
 
     @parameterized.expand([
         ({"license": {"key": "my_license"}}, "my_license", True),
         ({"license": {"key": "other_license"}}, "my_license", False),
+        ({}, "my_license", False),  # Edge case: no license key
     ])
     def test_has_license(self, repo, license_key, expected):
         """
