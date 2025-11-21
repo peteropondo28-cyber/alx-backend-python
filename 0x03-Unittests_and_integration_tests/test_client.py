@@ -5,6 +5,7 @@ Tests include:
 - org property
 - _public_repos_url property
 - public_repos method
+- has_license method
 """
 
 import unittest
@@ -27,6 +28,7 @@ class TestGithubOrgClient(unittest.TestCase):
         """
         expected_payload = {"login": org_name}
 
+        # Patch get_json inside client module
         with patch("client.get_json") as mock_get_json:
             mock_get_json.return_value = expected_payload
             client = GithubOrgClient(org_name)
@@ -45,6 +47,7 @@ class TestGithubOrgClient(unittest.TestCase):
         expected_url = "https://api.github.com/orgs/google/repos"
         mock_payload = {"repos_url": expected_url}
 
+        # Patch GithubOrgClient.org as a property (memoize turned it into one)
         with patch(
             "client.GithubOrgClient.org",
             new_callable=PropertyMock
@@ -69,7 +72,7 @@ class TestGithubOrgClient(unittest.TestCase):
         ]
         mock_get_json.return_value = mock_payload
 
-        # Mock the _public_repos_url property to return a fake URL
+        # Mock the _public_repos_url property
         with patch(
             "client.GithubOrgClient._public_repos_url",
             new_callable=PropertyMock
@@ -89,3 +92,21 @@ class TestGithubOrgClient(unittest.TestCase):
 
             # Ensure get_json was called once with the mocked URL
             mock_get_json.assert_called_once_with(fake_url)
+
+    @parameterized.expand([
+        ({"license": {"key": "my_license"}}, "my_license", True),
+        ({"license": {"key": "other_license"}}, "my_license", False),
+    ])
+    def test_has_license(self, repo, license_key, expected):
+        """
+        Test that has_license returns True if the repo license key matches
+        the given license_key, and False otherwise.
+
+        Args:
+            repo (dict): Repository dictionary containing license info.
+            license_key (str): The license key to check.
+            expected (bool): Expected return value.
+        """
+        client = GithubOrgClient("google")  # org name irrelevant here
+        result = client.has_license(repo, license_key)
+        self.assertEqual(result, expected)
