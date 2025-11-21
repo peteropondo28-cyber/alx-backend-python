@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch, Mock
 from parameterized import parameterized_class
 from client import GithubOrgClient
-import fixtures  # This should contain org_payload, repos_payload, expected_repos, apache2_repos
+import fixtures
 
 
 @parameterized_class([
@@ -24,14 +24,12 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """
-        Mock requests.get so that it returns fixture payloads.
-        """
-        # Patch requests.get
-        cls.get_patcher = patch("client.requests.get")
+        """Mock requests.get so that it returns fixture payloads."""
+        # Patch requests.get directly
+        cls.get_patcher = patch("requests.get")
         mock_get = cls.get_patcher.start()
 
-        # Side effect function to return payloads based on URL
+        # Side effect function to return fixture payloads based on URL
         def get_json_side_effect(url, *args, **kwargs):
             mock_response = Mock()
             if url.endswith("/orgs/google"):
@@ -46,24 +44,17 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """
-        Stop the requests.get patcher.
-        """
+        """Stop the requests.get patcher."""
         cls.get_patcher.stop()
 
     def test_public_repos(self):
-        """
-        Integration test: public_repos returns list of repo names
-        from mocked HTTP responses.
-        """
+        """Integration test: public_repos returns list of repo names."""
         client = GithubOrgClient("google")
         result = client.public_repos()
         self.assertEqual(result, self.expected_repos)
 
     def test_public_repos_with_license(self):
-        """
-        Integration test: public_repos filtered by license.
-        """
+        """Integration test: public_repos filtered by license."""
         client = GithubOrgClient("google")
         result = client.public_repos(license="apache-2.0")
         self.assertEqual(result, self.apache2_repos)
