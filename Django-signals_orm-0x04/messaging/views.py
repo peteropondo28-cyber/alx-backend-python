@@ -1,61 +1,82 @@
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.cache import cache_page
-from django.utils.decorators import method_decorator
-from django.views import View
+from .models import Message
 
-from .models import Conversation, Message
-from django.contrib.auth import get_user_model
 
-User = get_user_model()
-
-@login_required
-def delete_user(request):
-    """
-    Allow a user to delete their own account and cascade delete related data.
-    """
-    user = request.user
-    # Optionally confirm via POST payload; here we delete directly
+# -----------------------------------------------------
+# 1. Delete user (post_delete signal handles cleanup)
+# -----------------------------------------------------
+def delete_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
     user.delete()
-    return JsonResponse({'status': 'deleted'}, status=200)
+    return JsonResponse({"status": "User deleted successfully"})
 
 
-# cache this view for 60 seconds
+# -----------------------------------------------------
+# 2. Use the custom unread manager
+# -----------------------------------------------------
+def unread_inbox(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+
+    # Use custom manager + optimized `.only()`
+    unread_messages = Message.unread.for_user(user)
+
+    data = [
+        {
+            "id": m.id,
+            "sender": m.sender.username,
+            "content": m.content,
+            "timestamp": m.timestamp,
+        }
+        for m in unread_messages
+    ]
+
+    return JsonResponse(data, safe=False)
+
+
+# -----------------------------------------------------
+# 3. Recursive threaded message fetcher
+# -----------------------------------------------------
+def get_replies(message):
+    # Replies are prefetched in the parent queryset, no extra DB hits  
+    return [
+        {
+            "id": reply.id,
+            "sender": reply.sender.username,
+            "content": reply.content,
+            "timestamp": reply.timestamp,
+            "replies": get_replies(reply),
+        }
+        for reply in message.replies.all()
+    ]
+
+
+# -----------------------------------------------------
+# 4. Cached conversation messages (60 seconds)
+# Uses both custom manager & optimized ORM
+# -----------------------------------------------------
 @cache_page(60)
-@login_required
-def conversation_messages(request, conversation_id):
-    """
-    Return messages for a conversation, optimized with select_related and prefetch_related.
-    Only participants can access.
-    """
-    conversation = get_object_or_404(Conversation, pk=conversation_id)
-    if not conversation.participants.filter(pk=request.user.pk).exists():
-        return HttpResponseForbidden("Not a participant")
+def conversation_messages(request, user1, user2):
+    messages = (
+        Message.objects
+        .filter(sender_id__in=[user1, user2], receiver_id__in=[user1, user2])
+        .select_related("sender", "receiver")         # reduces sender/receiver queries
+        .prefetch_related("replies", "replies__sender")  # optimizes threaded replies
+        .order_by("timestamp")
+    )
 
-    # Use select_related to get sender/receiver in same query; prefetch replies
-    qs = Message.objects.filter(conversation=conversation, parent_message__isnull=True).select_related(
-        'sender', 'receiver'
-    ).prefetch_related('replies__sender', 'replies__replies')
+    response_data = []
 
-    # Build a serializable structure with nested replies
-    data = []
-    for m in qs:
-        # to avoid hitting DB for replies iterating, assign cache attribute
-        m.replies_cache = list(m.replies.select_related('sender').all())
-        data.append(m.get_thread())
+    for msg in messages:
+        response_data.append({
+            "id": msg.id,
+            "sender": msg.sender.username,
+            "receiver": msg.receiver.username,
+            "content": msg.content,
+            "timestamp": msg.timestamp,
+            "replies": get_replies(msg),
+        })
 
-    return JsonResponse({'messages': data}, status=200, safe=False)
-
-
-@login_required
-def mark_as_read(request, message_id):
-    """
-    Mark a message as read (if receiver is request.user)
-    """
-    msg = get_object_or_404(Message, pk=message_id)
-    if msg.receiver != request.user:
-        return HttpResponseForbidden("Not allowed")
-    msg.read = True
-    msg.save()
-    return JsonResponse({'status': 'ok'})
+    return JsonResponse(response_data, safe=False)
