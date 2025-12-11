@@ -1,0 +1,9 @@
+#!/bin/bash
+# Start Kubernetes locally and verify status
+
+# Ensure minikube is installed
+command -v minikube >/dev/null 2>&1 || { echo "Minikube not installed. Install it first."; exit 1; }
+
+minikube start
+kubectl cluster-info
+kubectl get pods -A
