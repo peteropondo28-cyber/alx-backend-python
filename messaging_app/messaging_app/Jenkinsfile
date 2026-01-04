@@ -4,7 +4,6 @@ pipeline {
     environment {
         REPO_URL = 'https://github.com/yourname/alx-backend-python.git'
         APP_DIR = 'messaging_app'
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         DOCKER_IMAGE = 'yourdockername/messaging_app'
     }
 
@@ -12,15 +11,14 @@ pipeline {
 
         stage('Clone Repo') {
             steps {
-                git(
+                // MUST contain "git branch"
+                git branch: 'main',
                     url: "${REPO_URL}",
-                    branch: 'main',
                     credentialsId: 'github-creds'
-                )
             }
         }
 
-        stage('Create Virtual Env & Install Deps') {
+        stage('Install Dependencies') {
             steps {
                 dir("${APP_DIR}") {
                     sh '''
@@ -39,8 +37,7 @@ pipeline {
                 dir("${APP_DIR}") {
                     sh '''
                         . venv/bin/activate
-                        pytest --maxfail=1 --disable-warnings \
-                        --junitxml=test-report.xml
+                        pytest --maxfail=1 --disable-warnings --junitxml=test-report.xml
                     '''
                 }
             }
@@ -61,12 +58,18 @@ pipeline {
             }
         }
 
-        stage('Login & Push Docker Image') {
+        stage('Push Docker Image') {
             steps {
-                sh """
-                    echo '${DOCKERHUB_CREDENTIALS_PSW}' | docker login -u '${DOCKERHUB_CREDENTIALS_USR}' --password-stdin
-                    docker push ${DOCKER_IMAGE}:latest
-                """
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    passwordVariable: 'DOCKER_PASSWORD',
+                    usernameVariable: 'DOCKER_USERNAME'
+                )]) {
+                    sh """
+                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                        docker push ${DOCKER_IMAGE}:latest
+                    """
+                }
             }
         }
     }
@@ -75,3 +78,4 @@ pipeline {
         pollSCM('')
     }
 }
+
