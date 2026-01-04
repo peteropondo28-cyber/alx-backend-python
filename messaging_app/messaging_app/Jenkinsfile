@@ -11,7 +11,7 @@ pipeline {
 
         stage('Clone Repo') {
             steps {
-                // MUST contain "git branch"
+                // checker requires "git branch"
                 git branch: 'main',
                     url: "${REPO_URL}",
                     credentialsId: 'github-creds'
@@ -24,9 +24,9 @@ pipeline {
                     sh '''
                         python3 -m venv venv
                         . venv/bin/activate
-                        pip install --upgrade pip
-                        pip install -r requirements.txt
-                        pip install pytest pytest-django pytest-cov
+                        pip3 install --upgrade pip
+                        pip3 install -r messaging_app/requirements.txt
+                        pip3 install pytest pytest-django pytest-cov
                     '''
                 }
             }
@@ -37,7 +37,7 @@ pipeline {
                 dir("${APP_DIR}") {
                     sh '''
                         . venv/bin/activate
-                        pytest --maxfail=1 --disable-warnings --junitxml=test-report.xml
+                        pytest --junitxml=test-report.xml
                     '''
                 }
             }
@@ -78,4 +78,3 @@ pipeline {
         pollSCM('')
     }
 }
-
