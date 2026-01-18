@@ -1,0 +1,23 @@
+# Core Python utilities
+typing_extensions
+mypy
+
+# Testing
+pytest
+pytest-cov
+parameterized
+
+# Async support
+asyncio
+
+# HTTP requests for integration tests
+requests
+
+# Optional linting (if used)
+flake8
+pycodestyle
+
+# Include packages for database operations if project uses them
+sqlalchemy
+
+# NOTE: No Django/DRF/Celery assumed here since the project appears to be Python-only
